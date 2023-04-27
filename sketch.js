@@ -12,6 +12,9 @@ let germSprite;
 let wormSprite;
 let slimeSprite;
 let heartSprite;
+let bgImage;
+
+var guyImages =[];
 
 let isHit = false;
 let isInvulnerable = false;
@@ -60,6 +63,15 @@ class Button extends Click {
     textAlign(CENTER, CENTER);
     text(this.title, this.x + this.sizex / 2, this.y + this.sizey / 2);
   }
+
+  update(){
+    super.update();
+    if (this.sx > 0){
+      this.currentImage = guyImage[1];
+    } else if (this.sx < 0){
+      this.currentImage = guyImages[0];
+    }
+  }
 }
 
 class Movement {
@@ -80,10 +92,16 @@ class Player extends Movement {
     this.size = 50;
     this.sx *= 0;
     this.sy *= 0;
+    this.currentImage = guyImages[0]; // Change to 2 when you get the indle sprite
   }
   render() {
     fill(0);
-    ellipse(this.x, this.y, this.size, this.size);
+    push();
+    rectMode(CENTER);
+    //rect(this.x, this.y, this.size, this.size);
+    imageMode(CENTER);
+    image(this.currentImage, this.x, this.y, this.size, this.size);
+    pop();
   }
   
 }
@@ -153,6 +171,9 @@ function preload(){
   wormSprite = loadImage('wormSprite.gif');
   slimeSprite = loadImage('slimeSprite.gif');
   heartSprite = loadImage('heartSprite.gif');
+  bgImage = loadImage('background.png');
+  guyImages.push(loadImage('guyLeft.gif'));
+  guyImages.push(loadImage('guyRight.gif'));
 }
 
 function setup() {
@@ -202,13 +223,17 @@ function draw() {
 countSpeed();
 changePosition();
 spawnNewGerms();
+checkCollisions();
 }
 
 //MAIN GAME
 function gameScreen(){
+
+  image(bgImage,0,0);
     //Draws the Player
     let player = createVector(p.x, p.y);
     p.render();
+    
   
   
   //Draws Bullets
@@ -268,15 +293,16 @@ function gameScreen(){
     image(heartSprite,i * (squareSize + 10)+ 25, 10, squareSize, squareSize);
   }
 
-  //Germs Killed Counter
-  fill(0);
-  rect(width/2-400/2,10, 400,40);
-
   //Wave Counter
   rect(width-140 -25 ,10, 140,40);
   textSize(32);
   fill(255);
   text("Wave: " + wave, width-110, 28);
+
+  //Check Lives
+  if (lives == 0){
+    screen = 2;
+  }
 
 } //###############################################################
   //################# END OF GAME CODE ############################
@@ -290,13 +316,14 @@ function homeScreen(){
 
 //END SCREEN (Out of Lives)
 function endScreen(){
-
+  text("YOU LOSE",width/2,width/2);
 }
 
 const MAX_SPEED = 5;
 function countSpeed() {
   if (keyLeft) {
     p.sx -= 0.1;
+    p.currentImage = guyImages[0];
   } else {
     if (p.sx < 0) {
       p.sx += 0.1;
@@ -307,6 +334,7 @@ function countSpeed() {
   }
   if (keyRight) {
     p.sx += 0.1;
+    p.currentImage = guyImages[1];
   } else {
     if (p.sx > 0) {
       p.sx -= 0.1;
@@ -357,11 +385,18 @@ function keyPressed(){
   if (keyCode == 83) {
     keyDown = true;
   }
-  if (keyCode == 65) {
+  if (keyCode == 65) { // LEFT
     keyLeft = true;
   }
-  if (keyCode == 68){
+  if (keyCode == 68){ // RIGHT
     keyRight = true;
+  }
+
+  //Alt Shoot Method w/ spacebar
+  if (screen == 1){
+    if (keyCode == 32){
+      bullets.push(new Bullets(p.x,p.y,mouseX,mouseY));
+    }
   }
 }
 
@@ -416,6 +451,23 @@ function spawnNewGerms() {
           break;
       }
       germ.push(new Germ(x, y));
+    }
+  }
+}
+
+function checkCollisions() {
+  for (let i = germ.length - 1; i >= 0; i--) {
+    const dx = p.x - germ[i].x;
+    const dy = p.y - germ[i].y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const minDistance = p.size / 2 + germ[i].sprite.width / 2;
+    if (distance < minDistance) {
+      // collision detected
+      germ.splice(i, 1);
+      isHit = true;
+      lives--;
+      invulnerableTimer = invulnerableDuration;
+      break;
     }
   }
 }
